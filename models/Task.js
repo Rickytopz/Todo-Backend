@@ -1,11 +1,9 @@
 const mongoose = require("mongoose");
 
 const taskSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    completed: { type: Boolean, default: false }
-});
+  title: { type: String, required: true },
+  completed: { type: Boolean, default: false },
+}, { timestamps: true }); // Adds createdAt & updatedAt automatically
 
-// Ensure model is only compiled once
-const Task = mongoose.models.Task || mongoose.model("Task", taskSchema);
-
-module.exports = Task;
+// Export the model, preventing re-compilation issues
+module.exports = mongoose.models.Task || mongoose.model("Task", taskSchema);

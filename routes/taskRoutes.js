@@ -1,24 +1,42 @@
 const express = require("express");
 const Task = require("../models/Task");
+const mongoose = require("mongoose");
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * tags:
+ *   name: Tasks
+ *   description: API for managing tasks
+ */
 
 /**
  * @swagger
  * /tasks:
  *   get:
  *     summary: Get all tasks
+ *     tags: [Tasks]
+ *     operationId: getAllTasks
  *     description: Fetches all tasks from the database.
  *     responses:
  *       200:
  *         description: List of tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Task'
  */
 router.get("/", async (req, res) => {
     try {
+        console.log("📡 GET /tasks - Fetching all tasks");
         const tasks = await Task.find();
         res.json(tasks);
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching tasks" });
+    } catch (err) {
+        console.error("❌ Error fetching tasks:", err);
+        res.status(500).json({ message: "Error fetching tasks", error: err.message });
     }
 });
 
@@ -27,29 +45,38 @@ router.get("/", async (req, res) => {
  * /tasks:
  *   post:
  *     summary: Create a new task
+ *     tags: [Tasks]
+ *     operationId: createTask
  *     description: Adds a new task to the database.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               completed:
- *                 type: boolean
+ *             $ref: '#/components/schemas/Task'
  *     responses:
  *       201:
  *         description: Task created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Task'
  */
 router.post("/", async (req, res) => {
     try {
-        const newTask = new Task(req.body);
-        await newTask.save();
-        res.status(201).json(newTask);
-    } catch (error) {
-        res.status(400).json({ message: "Error adding task" });
+        console.log("📥 POST /tasks - Incoming request:", req.body);
+        if (!req.body.title) {
+            return res.status(400).json({ error: "Task title is required" });
+        }
+        const newTask = new Task({
+            title: req.body.title,
+            completed: req.body.completed || false,
+        });
+        const savedTask = await newTask.save();
+        res.status(201).json(savedTask);
+    } catch (err) {
+        console.error("❌ Error adding task:", err);
+        res.status(400).json({ message: "Error adding task", error: err.message });
     }
 });
 
@@ -58,6 +85,8 @@ router.post("/", async (req, res) => {
  * /tasks/{id}:
  *   put:
  *     summary: Update a task
+ *     tags: [Tasks]
+ *     operationId: updateTask
  *     description: Updates the status or title of a task.
  *     parameters:
  *       - in: path
@@ -70,22 +99,31 @@ router.post("/", async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               completed:
- *                 type: boolean
+ *             $ref: '#/components/schemas/Task'
  *     responses:
  *       200:
  *         description: Task updated
+ *       404:
+ *         description: Task not found
  */
 router.put("/:id", async (req, res) => {
     try {
-        const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        console.log(`✏️ PUT /tasks/${req.params.id} - Updating task`, req.body);
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ error: "Invalid task ID" });
+        }
+        const updatedTask = await Task.findByIdAndUpdate(
+            req.params.id,
+            { $set: req.body },
+            { new: true, runValidators: true }
+        );
+        if (!updatedTask) {
+            return res.status(404).json({ message: "Task not found" });
+        }
         res.json(updatedTask);
-    } catch (error) {
-        res.status(400).json({ message: "Error updating task" });
+    } catch (err) {
+        console.error("❌ Error updating task:", err);
+        res.status(400).json({ message: "Error updating task", error: err.message });
     }
 });
 
@@ -94,6 +132,8 @@ router.put("/:id", async (req, res) => {
  * /tasks/{id}:
  *   delete:
  *     summary: Delete a task
+ *     tags: [Tasks]
+ *     operationId: deleteTask
  *     description: Removes a task from the database.
  *     parameters:
  *       - in: path
@@ -104,13 +144,23 @@ router.put("/:id", async (req, res) => {
  *     responses:
  *       200:
  *         description: Task deleted successfully
+ *       404:
+ *         description: Task not found
  */
 router.delete("/:id", async (req, res) => {
     try {
-        await Task.findByIdAndDelete(req.params.id);
+        console.log(`🗑️ DELETE /tasks/${req.params.id} - Deleting task`);
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ error: "Invalid task ID" });
+        }
+        const deletedTask = await Task.findByIdAndDelete(req.params.id);
+        if (!deletedTask) {
+            return res.status(404).json({ message: "Task not found" });
+        }
         res.json({ message: "Task deleted successfully" });
-    } catch (error) {
-        res.status(400).json({ message: "Error deleting task" });
+    } catch (err) {
+        console.error("❌ Error deleting task:", err);
+        res.status(400).json({ message: "Error deleting task", error: err.message });
     }
 });
 
