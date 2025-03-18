@@ -12,7 +12,13 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:3000" })); // ✅ Allow frontend access
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://todo-frontend-ten-jade.vercel.app"], // ✅ Allow local & Vercel frontend
+    methods: "GET,POST,PUT,DELETE",
+    credentials: true,
+  })
+);
 
 // Load environment variables
 const PORT = process.env.PORT || 5000;
@@ -27,7 +33,7 @@ const swaggerOptions = {
       version: "1.0.0",
       description: "A simple API to manage tasks",
     },
-    servers: [{ url: `http://localhost:${PORT}` }],
+    servers: [{ url: `http://localhost:${PORT}` }, { url: "https://todo-backend-x8jt.onrender.com" }], // ✅ Include Render Backend URL
   },
   apis: ["./routes/taskRoutes.js"], // Path to the route docs
 };
@@ -54,6 +60,6 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((error) => console.error("❌ MongoDB connection error:", error));
